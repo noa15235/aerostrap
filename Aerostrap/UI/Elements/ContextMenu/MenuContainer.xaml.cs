@@ -12,6 +12,7 @@ namespace Aerostrap.UI.Elements.ContextMenu
 {
     public partial class MenuContainer
     {
+        protected override bool ShowSnowfall => false;
 
         private readonly Watcher _watcher;
 

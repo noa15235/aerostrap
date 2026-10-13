@@ -1,5 +1,7 @@
 ﻿using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Interop;
+using Aerostrap.UI.Elements.Controls;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
 using Wpf.Ui.Mvvm.Contracts;
@@ -11,9 +13,37 @@ namespace Aerostrap.UI.Elements.Base
     {
         private readonly IThemeService _themeService = new ThemeService();
 
+        protected virtual bool ShowSnowfall => true;
+
         public WpfUiWindow()
         {
             ApplyTheme();
+        }
+
+        protected override void OnContentChanged(object oldContent, object newContent)
+        {
+            base.OnContentChanged(oldContent, newContent);
+
+            if (!ShowSnowfall || newContent is not UIElement element)
+                return;
+
+            if (element is Grid grid)
+            {
+                if (!grid.Children.OfType<SnowfallCanvas>().Any())
+                {
+                    var snowfall = new SnowfallCanvas();
+                    Grid.SetRowSpan(snowfall, 100);
+                    Grid.SetColumnSpan(snowfall, 100);
+                    Panel.SetZIndex(snowfall, 8);
+                    grid.Children.Add(snowfall);
+                }
+
+                return;
+            }
+
+            var wrapper = new Grid();
+            Content = wrapper;
+            wrapper.Children.Add(element);
         }
 
         public void ApplyTheme()

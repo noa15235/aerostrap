@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
@@ -41,7 +41,7 @@ namespace Aerostrap.UI.Elements.Controls
 
         private bool _measured;
 
-        public int FlakeCount { get; set; } = 70;
+        public int FlakeCount { get; set; }
 
         public int RefreshRate { get; private set; } = 60;
 
@@ -110,7 +110,9 @@ namespace Aerostrap.UI.Elements.Controls
 
             var brush = CreateFlakeBrush();
 
-            for (int i = 0; i < FlakeCount; i++)
+            int count = FlakeCount > 0 ? FlakeCount : Math.Clamp((int)(ActualWidth * ActualHeight / 2500), 15, 140);
+
+            for (int i = 0; i < count; i++)
             {
                 double depth = _random.NextDouble();
 
