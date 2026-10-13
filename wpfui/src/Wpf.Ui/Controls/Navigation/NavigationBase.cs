@@ -1,0 +1,586 @@
+﻿#nullable enable
+#pragma warning disable CS8600
+#pragma warning disable CS8603
+
+using System;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using Wpf.Ui.Common;
+using Wpf.Ui.Controls.Interfaces;
+using Wpf.Ui.Mvvm.Contracts;
+using Wpf.Ui.Mvvm.Interfaces;
+
+namespace Wpf.Ui.Controls.Navigation;
+
+public abstract class NavigationBase : System.Windows.Controls.Control, INavigation
+{
+    private readonly Services.Internal.NavigationService? _navigationService;
+
+    public static readonly DependencyProperty ItemsProperty = DependencyProperty.Register(nameof(Items),
+        typeof(ObservableCollection<INavigationControl>), typeof(NavigationBase),
+        new PropertyMetadata((ObservableCollection<INavigationControl>)null, OnItemsChanged));
+
+    public static readonly DependencyProperty FooterProperty = DependencyProperty.Register(nameof(Footer),
+        typeof(ObservableCollection<INavigationControl>), typeof(NavigationBase),
+        new PropertyMetadata((ObservableCollection<INavigationControl>)null, OnFooterChanged));
+
+    public static readonly DependencyProperty OrientationProperty = DependencyProperty.Register(nameof(Orientation),
+        typeof(Orientation), typeof(NavigationBase),
+        new FrameworkPropertyMetadata(Orientation.Vertical,
+            FrameworkPropertyMetadataOptions.AffectsMeasure));
+
+    public static readonly DependencyProperty FrameProperty = DependencyProperty.Register(nameof(Frame),
+        typeof(Frame), typeof(NavigationBase),
+        new PropertyMetadata((Frame)null, OnFrameChanged));
+
+    public static readonly DependencyProperty TransitionDurationProperty = DependencyProperty.Register(
+        nameof(TransitionDuration),
+        typeof(int), typeof(NavigationBase),
+        new PropertyMetadata(300, OnTransitionDurationChanged));
+
+    public static readonly DependencyProperty TransitionTypeProperty = DependencyProperty.Register(
+        nameof(TransitionType),
+        typeof(Animations.TransitionType), typeof(NavigationBase),
+        new PropertyMetadata(Animations.TransitionType.FadeInWithSlide, OnTransitionTypeChanged));
+
+    public static readonly DependencyProperty SelectedPageIndexProperty = DependencyProperty.Register(
+        nameof(SelectedPageIndex),
+        typeof(int), typeof(NavigationBase),
+        new PropertyMetadata(-1));
+
+    public static readonly DependencyProperty PrecacheProperty = DependencyProperty.Register(
+        nameof(Precache),
+        typeof(bool), typeof(NavigationBase),
+        new PropertyMetadata(false));
+
+    internal static readonly DependencyProperty NavigationParentProperty = DependencyProperty.RegisterAttached(
+        nameof(NavigationParent), typeof(INavigation), typeof(NavigationBase),
+        new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.Inherits));
+
+    public ObservableCollection<INavigationControl> Items
+    {
+        get => GetValue(ItemsProperty) as ObservableCollection<INavigationControl>;
+        set => SetValue(ItemsProperty, value);
+    }
+
+    public ObservableCollection<INavigationControl> Footer
+    {
+        get => GetValue(FooterProperty) as ObservableCollection<INavigationControl>;
+        set => SetValue(FooterProperty, value);
+    }
+
+    public Orientation Orientation
+    {
+        get => (Orientation)GetValue(OrientationProperty);
+        set => SetValue(OrientationProperty, value);
+    }
+
+    public int TransitionDuration
+    {
+        get => (int)GetValue(TransitionDurationProperty);
+        set => SetValue(TransitionDurationProperty, value);
+    }
+
+    public Animations.TransitionType TransitionType
+    {
+        get => (Animations.TransitionType)GetValue(TransitionTypeProperty);
+        set => SetValue(TransitionTypeProperty, value);
+    }
+
+    public Frame? Frame
+    {
+        get => GetValue(FrameProperty) as Frame;
+        set => SetValue(FrameProperty, value);
+    }
+
+    public int SelectedPageIndex
+    {
+        get => (int)GetValue(SelectedPageIndexProperty);
+        set => SetValue(SelectedPageIndexProperty, value);
+    }
+
+    public bool Precache
+    {
+        get => (bool)GetValue(PrecacheProperty);
+        set => SetValue(PrecacheProperty, value);
+    }
+
+    internal INavigation NavigationParent
+    {
+        get => (INavigation)GetValue(NavigationParentProperty);
+        private set => SetValue(NavigationParentProperty, value);
+    }
+
+    #region Events
+
+    public static readonly RoutedEvent NavigatedEvent = EventManager.RegisterRoutedEvent(nameof(Navigated),
+        RoutingStrategy.Bubble, typeof(RoutedNavigationEvent), typeof(NavigationBase));
+
+    public event RoutedNavigationEvent Navigated
+    {
+        add => AddHandler(NavigatedEvent, value);
+        remove => RemoveHandler(NavigatedEvent, value);
+    }
+
+    public static readonly RoutedEvent NavigatedForwardEvent =
+        EventManager.RegisterRoutedEvent(nameof(NavigatedForward), RoutingStrategy.Bubble,
+            typeof(RoutedNavigationEvent), typeof(NavigationBase));
+
+    public event RoutedNavigationEvent NavigatedForward
+    {
+        add => AddHandler(NavigatedForwardEvent, value);
+        remove => RemoveHandler(NavigatedForwardEvent, value);
+    }
+
+    public static readonly RoutedEvent NavigatedBackwardEvent =
+        EventManager.RegisterRoutedEvent(nameof(NavigatedBackward), RoutingStrategy.Bubble,
+            typeof(RoutedNavigationEvent), typeof(NavigationBase));
+
+    public event RoutedNavigationEvent NavigatedBackward
+    {
+        add => AddHandler(NavigatedBackwardEvent, value);
+        remove => RemoveHandler(NavigatedBackwardEvent, value);
+    }
+
+    #endregion
+
+    public IPageService? PageService
+    {
+        get => _navigationService?.GetService();
+        set => _navigationService?.SetService(value);
+    }
+
+    public int PreviousPageIndex => _navigationService?.GetPreviousId() ?? 0;
+
+    public bool CanGoBack => _navigationService is not null && _navigationService.CanGoBack;
+
+    public INavigationItem? Current { get; internal set; }
+
+    static NavigationBase()
+    {
+        KeyboardNavigation.DirectionalNavigationProperty.OverrideMetadata(
+            typeof(NavigationBase),
+            new FrameworkPropertyMetadata(KeyboardNavigationMode.Contained));
+
+        KeyboardNavigation.TabNavigationProperty.OverrideMetadata(
+            typeof(NavigationBase),
+            new FrameworkPropertyMetadata(KeyboardNavigationMode.Once));
+    }
+
+    protected NavigationBase()
+    {
+        Current = (INavigationItem)null;
+
+        Items ??= new ObservableCollection<INavigationControl>();
+        Footer ??= new ObservableCollection<INavigationControl>();
+
+        _navigationService = new Wpf.Ui.Services.Internal.NavigationService();
+        _navigationService.TransitionDuration = TransitionDuration;
+        _navigationService.TransitionType = TransitionType;
+
+        if (Frame != null)
+            _navigationService.SetFrame(Frame);
+
+        NavigationParent = this;
+
+        Loaded += OnLoaded;
+    }
+
+    public bool NavigateBack()
+    {
+        if (_navigationService is null) return false;
+
+        if (!_navigationService.NavigateBack())
+            return false;
+
+        NavigateInternal(0, true);
+
+        return true;
+    }
+
+    public bool Navigate(Type pageType)
+    {
+        return Navigate(pageType, null);
+    }
+
+    public bool Navigate(Type pageType, object? dataContext)
+    {
+        if (!(_navigationService?.Navigate(pageType, dataContext) ?? false))
+            return false;
+
+        NavigateInternal(0, true);
+
+        return true;
+    }
+
+    public bool Navigate(string pageTag)
+    {
+        return Navigate(pageTag, null);
+    }
+
+    public bool Navigate(string pageTag, object? dataContext)
+    {
+        if (!(_navigationService?.Navigate(pageTag, dataContext) ?? false))
+            return false;
+
+        NavigateInternal(0, true);
+
+        return true;
+    }
+
+    public bool Navigate(int pageId)
+    {
+        return Navigate(pageId, null);
+    }
+
+    public bool Navigate(int pageId, object? dataContext)
+    {
+        if (_navigationService != null)
+            if (!_navigationService.Navigate(pageId, dataContext))
+                return false;
+
+        NavigateInternal(-1, true);
+
+        return true;
+    }
+
+    public bool NavigateExternal(object frameworkElement)
+    {
+        return NavigateExternal(frameworkElement, null);
+    }
+
+    public bool NavigateExternal(object frameworkElement, object? dataContext)
+    {
+        if (_navigationService != null)
+            if (!_navigationService.NavigateExternal(frameworkElement, dataContext))
+                return false;
+
+        NavigateInternal(-1, true);
+
+        return true;
+    }
+
+    public bool NavigateExternal(Uri absolutePageUri)
+    {
+        return NavigateExternal(absolutePageUri, null);
+    }
+
+    public bool NavigateExternal(Uri absolutePageUri, object? dataContext)
+    {
+        if (_navigationService != null)
+            if (!_navigationService.NavigateExternal(absolutePageUri, dataContext))
+                return false;
+
+        NavigateInternal(-1, false);
+
+        return true;
+    }
+
+    public void SetCurrentContext(object dataContext)
+    {
+        if (Frame?.Content is not FrameworkElement)
+            return;
+
+        ((FrameworkElement)Frame.Content).DataContext = dataContext;
+
+        if (dataContext is IViewModel)
+            ((IViewModel)dataContext).OnMounted(((FrameworkElement)Frame.Content));
+    }
+
+    public bool SetContext(string pageTag, object dataContext)
+    {
+        if (_navigationService == null)
+            return false;
+
+        return _navigationService.SetContext(pageTag, dataContext);
+    }
+
+    public bool SetContext(int pageId, object dataContext)
+    {
+        if (_navigationService == null)
+            return false;
+
+        return _navigationService.SetContext(pageId, dataContext);
+    }
+
+    public void Flush()
+    {
+        Items.Clear();
+        Footer.Clear();
+
+        Current = (INavigationItem)null;
+    }
+
+    public void ClearCache()
+    {
+        if (_navigationService == null)
+            return;
+
+        _navigationService.ClearCache();
+    }
+
+    private void UpdateItems()
+    {
+        var currentTag = _navigationService?.GetCurrentTag() ?? String.Empty;
+
+        foreach (var singleNavigationControl in Items)
+        {
+            if (singleNavigationControl is not INavigationItem)
+                continue;
+
+            if (((INavigationItem)singleNavigationControl).PageTag == currentTag)
+            {
+                ((INavigationItem)singleNavigationControl).IsActive = true;
+                Current = (INavigationItem)singleNavigationControl;
+            }
+            else
+            {
+                ((INavigationItem)singleNavigationControl).IsActive = false;
+            }
+        }
+
+        foreach (var singleNavigationControl in Footer)
+        {
+            if (singleNavigationControl is not INavigationItem)
+                continue;
+
+            if (((INavigationItem)singleNavigationControl).PageTag == currentTag)
+            {
+                ((INavigationItem)singleNavigationControl).IsActive = true;
+                Current = (INavigationItem)singleNavigationControl;
+            }
+            else
+            {
+                ((INavigationItem)singleNavigationControl).IsActive = false;
+            }
+        }
+    }
+
+    protected virtual void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        UpdateServiceItems();
+
+        if (PageService == null && Frame != null && SelectedPageIndex > -1)
+            Navigate(SelectedPageIndex);
+
+        if (Precache)
+        {
+            if (PageService != null)
+                throw new InvalidOperationException("The cache cannot be used if you are using IPageService.");
+
+        }
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        if (Keyboard.Modifiers is not ModifierKeys.None)
+            return;
+
+        switch (e.Key)
+        {
+            case Key.Left:
+                MoveFocus(this, FocusNavigationDirection.Left);
+                e.Handled = true;
+                break;
+
+            case Key.Up:
+                MoveFocus(this, FocusNavigationDirection.Up);
+                e.Handled = true;
+                break;
+
+            case Key.Right:
+                MoveFocus(this, FocusNavigationDirection.Right);
+                e.Handled = true;
+                break;
+
+            case Key.Down:
+                MoveFocus(this, FocusNavigationDirection.Down);
+                e.Handled = true;
+                break;
+        }
+
+        if (!e.Handled)
+            base.OnKeyDown(e);
+
+        static void MoveFocus(FrameworkElement element, FocusNavigationDirection direction)
+        {
+            var request = new TraversalRequest(direction);
+            element.MoveFocus(request);
+        }
+    }
+
+    protected virtual void OnNavigated()
+    {
+        var newEvent = new RoutedNavigationEventArgs(NavigatedEvent, this, Current);
+        RaiseEvent(newEvent);
+    }
+
+    protected virtual void OnNavigatedForward()
+    {
+        var newEvent = new RoutedNavigationEventArgs(NavigatedForwardEvent, this, Current);
+        RaiseEvent(newEvent);
+    }
+
+    protected virtual void OnNavigatedBackward()
+    {
+        var newEvent = new RoutedNavigationEventArgs(NavigatedBackwardEvent, this, Current);
+        RaiseEvent(newEvent);
+    }
+
+    protected virtual void OnNavigationItemClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not INavigationItem navigationItem)
+            return;
+
+        if (navigationItem.AbsolutePageSource == null && navigationItem.PageType == null)
+            return;
+
+        if (PageService == null)
+        {
+            Navigate(navigationItem.PageTag);
+
+            return;
+        }
+
+        if (navigationItem.PageType == null)
+            throw new InvalidOperationException("When navigating through the IPageService, the navigated page type must be defined the INavigationItem.PageType.");
+
+        Navigate(navigationItem.PageType);
+    }
+
+    protected virtual void OnNavigationCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (IsLoaded)
+            UpdateServiceItems();
+
+        if (e.NewItems != null)
+            foreach (var addedItem in e.NewItems)
+                if (addedItem is INavigationItem)
+                {
+                    ((INavigationItem)addedItem).Click -= OnNavigationItemClicked;
+                    ((INavigationItem)addedItem).Click += OnNavigationItemClicked;
+                }
+
+        if (e.OldItems == null)
+            return;
+
+        foreach (var deletedItem in e.OldItems)
+            ((INavigationItem)deletedItem).Click -= OnNavigationItemClicked;
+    }
+
+    private static void OnItemsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is not NavigationBase navigationBase)
+            return;
+
+        navigationBase.InitializeServiceItems();
+
+        if (e.NewValue is not ObservableCollection<INavigationControl> itemsCollection)
+            return;
+
+        itemsCollection.CollectionChanged += navigationBase.OnNavigationCollectionChanged;
+    }
+
+    private static void OnFooterChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is not NavigationBase navigationBase)
+            return;
+
+        navigationBase.InitializeServiceItems();
+
+        if (e.NewValue is not ObservableCollection<INavigationControl> itemsCollection)
+            return;
+
+        itemsCollection.CollectionChanged += navigationBase.OnNavigationCollectionChanged;
+    }
+
+    protected virtual void OnFrameChanged(Frame frame)
+    {
+        _navigationService?.SetFrame(frame);
+    }
+
+    private static void OnFrameChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is not NavigationBase navigationBase || e.NewValue is not Frame frame)
+            return;
+
+        navigationBase.OnFrameChanged(frame);
+    }
+
+    private static void OnTransitionDurationChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is not NavigationBase navigation)
+            return;
+
+        if (navigation._navigationService == null)
+            return;
+
+        navigation._navigationService.TransitionDuration = (int)e.NewValue;
+    }
+
+    private static void OnTransitionTypeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is not NavigationBase navigation)
+            return;
+
+        if (navigation._navigationService == null)
+            return;
+
+        navigation._navigationService.TransitionType = (Animations.TransitionType)e.NewValue;
+    }
+
+    internal static NavigationBase? GetNavigationParent<T>(T navigationItem)
+        where T : DependencyObject, INavigationItem
+    {
+        return (NavigationBase?)navigationItem.GetValue(NavigationParentProperty);
+    }
+
+    private void InitializeServiceItems()
+    {
+        var navigationItems = GetValue(ItemsProperty) as ObservableCollection<INavigationControl> ?? new ObservableCollection<INavigationControl> { };
+        var navigationFooter = GetValue(FooterProperty) as ObservableCollection<INavigationControl> ?? new ObservableCollection<INavigationControl> { };
+
+        foreach (var addedItem in navigationItems)
+            if (addedItem is INavigationItem)
+            {
+                ((INavigationItem)addedItem).Click -= OnNavigationItemClicked;
+                ((INavigationItem)addedItem).Click += OnNavigationItemClicked;
+            }
+
+        foreach (var addedItem in navigationFooter)
+            if (addedItem is INavigationItem)
+            {
+                ((INavigationItem)addedItem).Click -= OnNavigationItemClicked;
+                ((INavigationItem)addedItem).Click += OnNavigationItemClicked;
+            }
+
+        UpdateServiceItems();
+    }
+
+    private void UpdateServiceItems()
+    {
+        var navigationItems = GetValue(ItemsProperty) as ObservableCollection<INavigationControl> ?? new ObservableCollection<INavigationControl> { };
+        var navigationFooter = GetValue(FooterProperty) as ObservableCollection<INavigationControl> ?? new ObservableCollection<INavigationControl> { };
+
+        if (_navigationService != null)
+            _navigationService.UpdateItems(navigationItems, navigationFooter);
+    }
+
+    private void NavigateInternal(int arg, bool updateItems)
+    {
+        SelectedPageIndex = _navigationService?.GetCurrentId() ?? +arg;
+
+        if (updateItems)
+            UpdateItems();
+
+        OnNavigated();
+
+        if (SelectedPageIndex > (_navigationService?.GetPreviousId() ?? +arg))
+            OnNavigatedForward();
+        else
+            OnNavigatedBackward();
+    }
+}
