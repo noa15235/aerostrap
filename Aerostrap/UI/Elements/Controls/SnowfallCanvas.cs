@@ -117,9 +117,9 @@ namespace Aerostrap.UI.Elements.Controls
                 var flake = new Flake
                 {
                     Size = 2 + depth * 5,
-                    Speed = 18 + depth * 42,
-                    SwayAmplitude = 6 + _random.NextDouble() * 14,
-                    SwayFrequency = 0.4 + _random.NextDouble() * 0.8,
+                    Speed = 8 + depth * 18,
+                    SwayAmplitude = 8 + _random.NextDouble() * 12,
+                    SwayFrequency = 0.12 + _random.NextDouble() * 0.2,
                     Phase = _random.NextDouble() * Math.PI * 2,
                     BaseX = _random.NextDouble() * Math.Max(ActualWidth, 1),
                     Y = _random.NextDouble() * Math.Max(ActualHeight, 1)
