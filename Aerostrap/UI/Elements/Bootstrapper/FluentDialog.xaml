@@ -3,6 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:base="clr-namespace:Aerostrap.UI.Elements.Base"
+    xmlns:controls="clr-namespace:Aerostrap.UI.Elements.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:resources="clr-namespace:Aerostrap.Resources"
@@ -27,6 +28,8 @@
     </Window.TaskbarItemInfo>
 
     <Grid Background="{Binding Path=BackgroundColourBrush, Mode=OneTime}">
+        <controls:SnowfallCanvas />
+
         <ui:TitleBar
             VerticalAlignment="Top"
             CanMaximize="False"

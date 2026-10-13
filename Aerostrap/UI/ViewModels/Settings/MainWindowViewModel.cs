@@ -13,6 +13,8 @@ namespace Aerostrap.UI.ViewModels.Settings
         
         public ICommand CloseWindowCommand => new RelayCommand(CloseWindow);
 
+        public ICommand LaunchRobloxCommand => new RelayCommand(LaunchRoblox);
+
         public EventHandler? RequestSaveNoticeEvent;
         
         public EventHandler? RequestCloseWindowEvent;
@@ -37,6 +39,13 @@ namespace Aerostrap.UI.ViewModels.Settings
         private void OpenAbout() => new MainWindow().ShowDialog();
 
         private void CloseWindow() => RequestCloseWindowEvent?.Invoke(this, EventArgs.Empty);
+
+        private void LaunchRoblox()
+        {
+            SaveSettings();
+            Process.Start(Paths.Process, "-player");
+            CloseWindow();
+        }
 
         private void SaveSettings()
         {
