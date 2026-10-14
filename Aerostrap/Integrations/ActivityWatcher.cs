@@ -1,4 +1,4 @@
-namespace Aerostrap.Integrations
+﻿namespace Aerostrap.Integrations
 {
     public class ActivityWatcher : IDisposable
     {
@@ -18,9 +18,10 @@ namespace Aerostrap.Integrations
         private const string GameJoiningUniversePattern      = @"universeid:([0-9]+).*userid:([0-9]+)";
         private const string GameJoiningUDMUXPattern         = @"UDMUX Address = ([0-9\.]+), Port = [0-9]+ \| RCC Server Address = ([0-9\.]+), Port = [0-9]+";
         private const string GameJoinedEntryPattern          = @"serverId: ([0-9\.]+)\|[0-9]+";
-        private const string GameMessageEntryPattern         = @"\[AerostrapRPC\] (.*)";
+        private const string GameMessageEntryPattern         = @"\[BloxstrapRPC\] (.*)";
 
         private int _logEntriesRead = 0;
+        private volatile string? _pendingLogLocation;
         private bool _teleportMarker = false;
         private bool _reservedTeleportMarker = false;
         
@@ -68,7 +69,7 @@ namespace Aerostrap.Integrations
                 {
                     logFileInfo = new DirectoryInfo(logDirectory)
                         .GetFiles()
-                        .Where(x => x.Name.Contains("Player", StringComparison.OrdinalIgnoreCase) && x.CreationTime <= DateTime.Now)
+                        .Where(x => IsPlayerLog(x.Name) && x.CreationTime <= DateTime.Now)
                         .OrderByDescending(x => x.CreationTime)
                         .First();
 
@@ -88,14 +89,26 @@ namespace Aerostrap.Integrations
 
             OnLogOpen?.Invoke(this, EventArgs.Empty);
             
-            var logFileStream = logFileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            var streamReader = new StreamReader(logFileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
 
             App.Logger.WriteLine(LOG_IDENT, $"Opened {LogLocation}");
 
-            using var streamReader = new StreamReader(logFileStream);
-
             while (!IsDisposed)
             {
+                string? pending = _pendingLogLocation;
+
+                if (pending is not null)
+                {
+                    _pendingLogLocation = null;
+                    streamReader.Dispose();
+
+                    LogLocation = pending;
+                    ResetState();
+
+                    streamReader = new StreamReader(new FileInfo(LogLocation).Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+                    App.Logger.WriteLine(LOG_IDENT, $"Switched to {LogLocation}");
+                }
+
                 string? log = await streamReader.ReadLineAsync();
 
                 if (log is null)
@@ -103,6 +116,40 @@ namespace Aerostrap.Integrations
                 else
                     ReadLogEntry(log);
             }
+
+            streamReader.Dispose();
+        }
+
+        public static bool IsPlayerLog(string fileName) =>
+            fileName.Contains("_Player_", StringComparison.OrdinalIgnoreCase)
+            && !fileName.Contains("CrashHandler", StringComparison.OrdinalIgnoreCase);
+
+        public static string? FindLatestPlayerLog()
+        {
+            var directory = new DirectoryInfo(Path.Combine(Paths.LocalAppData, "Roblox", "logs"));
+
+            if (!directory.Exists)
+                return null;
+
+            return directory.GetFiles("*.log")
+                .Where(x => IsPlayerLog(x.Name))
+                .OrderByDescending(x => x.LastWriteTimeUtc)
+                .FirstOrDefault()?.FullName;
+        }
+
+        public void Follow(string logFile) => _pendingLogLocation = logFile;
+
+        private void ResetState()
+        {
+            bool wasInGame = InGame;
+
+            InGame = false;
+            Data = new();
+            _teleportMarker = false;
+            _reservedTeleportMarker = false;
+
+            if (wasInGame)
+                OnGameLeave?.Invoke(this, EventArgs.Empty);
         }
 
         private void ReadLogEntry(string entry)

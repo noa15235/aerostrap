@@ -551,6 +551,9 @@ namespace Aerostrap
 
             logWatcher.Created += (_, e) =>
             {
+                if (!Integrations.ActivityWatcher.IsPlayerLog(e.Name ?? ""))
+                    return;
+
                 logWatcher.EnableRaisingEvents = false;
                 logFileName = e.FullPath;
                 logCreatedEvent.Set();
@@ -758,7 +761,7 @@ namespace Aerostrap
 #else
                 var asset = releaseInfo.Assets![0];
 
-                string downloadLocation = Path.Combine(Paths.TempUpdates, asset.Name);
+                string downloadLocation = Path.Combine(Paths.TempUpdates, $"{releaseInfo.TagName}-{asset.Name}");
 
                 Directory.CreateDirectory(Paths.TempUpdates);
 

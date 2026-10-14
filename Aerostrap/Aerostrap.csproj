@@ -7,8 +7,8 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>True</UseWindowsForms>
     <ApplicationIcon>Aerostrap.ico</ApplicationIcon>
-    <Version>1.0.2</Version>
-    <FileVersion>1.0.2</FileVersion>
+    <Version>1.0.3</Version>
+    <FileVersion>1.0.3</FileVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
@@ -16,6 +16,7 @@
     
   <ItemGroup>
     <Resource Include="Aerostrap.ico" />
+    <Resource Include="Resources\Logo.png" />
     <Resource Include="Resources\Fonts\NotoSansThai-VariableFont_wdth,wght.ttf" />
     <Resource Include="Resources\Fonts\Rubik-VariableFont_wght.ttf" />
     <Resource Include="Resources\BootstrapperStyles\ByfronDialog\ByfronLogoDark.jpg" />

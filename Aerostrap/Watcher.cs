@@ -106,10 +106,28 @@ namespace Aerostrap
             if (!_lock.IsAcquired || _watcherData is null)
                 return;
 
+            const string LOG_IDENT = "Watcher::Run";
+
             ActivityWatcher?.Start();
 
-            while (Utilities.GetProcessesSafe().Any(x => x.Id == _watcherData.ProcessId))
-                await Task.Delay(1000);
+            while (true)
+            {
+                while (Utilities.GetProcessesSafe().Any(x => x.Id == _watcherData.ProcessId))
+                    await Task.Delay(1000);
+
+                var next = Utilities.GetProcessesSafe().FirstOrDefault(x => x.ProcessName == App.RobloxPlayerAppName);
+
+                if (next is null)
+                    break;
+
+                App.Logger.WriteLine(LOG_IDENT, $"Roblox process {_watcherData.ProcessId} exited, following {next.Id}");
+                _watcherData.ProcessId = next.Id;
+
+                string? logFile = ActivityWatcher.FindLatestPlayerLog();
+
+                if (ActivityWatcher is not null && logFile is not null && logFile != ActivityWatcher.LogLocation)
+                    ActivityWatcher.Follow(logFile);
+            }
 
             if (_watcherData.AutoclosePids is not null)
             {

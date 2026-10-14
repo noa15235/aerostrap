@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.IO;
 using System.Windows.Media.Imaging;
 using System.Windows.Media;
@@ -8,6 +8,12 @@ namespace Aerostrap.Extensions
     public static class IconEx
     {
         public static Icon GetSized(this Icon icon, int width, int height) => new(icon, new Size(width, height));
+
+        private static ImageSource LargestFrame(Stream stream)
+        {
+            var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+            return decoder.Frames.OrderByDescending(x => x.PixelWidth).First();
+        }
 
         public static ImageSource GetImageSource(this Icon icon, bool handleException = true)
         {
@@ -19,7 +25,7 @@ namespace Aerostrap.Extensions
             {
                 try
                 {
-                    return BitmapFrame.Create(stream, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+                    return LargestFrame(stream);
                 }
                 catch (Exception ex)
                 {
@@ -30,7 +36,7 @@ namespace Aerostrap.Extensions
             }
             else
             {
-                return BitmapFrame.Create(stream, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+                return LargestFrame(stream);
             }
         }
     }
