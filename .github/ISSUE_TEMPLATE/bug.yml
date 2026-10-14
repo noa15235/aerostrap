@@ -1,0 +1,24 @@
+name: Bug
+description: Quelque chose ne marche pas comme prévu
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version d'Aerostrap
+      description: Visible dans Paramètres > À propos
+      placeholder: "1.0.4"
+    validations:
+      required: true
+  - type: textarea
+    id: probleme
+    attributes:
+      label: Qu'est-ce qui se passe ?
+      description: Ce que tu as fait, ce que tu attendais, et ce qui s'est passé à la place. Une capture d'écran aide souvent.
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: Glisse ici le dernier fichier de %LocalAppData%\Aerostrap\Logs
