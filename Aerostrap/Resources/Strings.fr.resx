@@ -1368,4 +1368,22 @@ Retour à la valeur par défaut {1}.</value>
   <data name="Menu.Integrations.RichPresenceTemplate.Description" xml:space="preserve">
     <value>Variables : {game}, {creator}, {placeId}, {jobId}. Laisse vide pour le texte par défaut.</value>
   </data>
+  <data name="RichPresence.ByCreator" xml:space="preserve">
+    <value>par {0}</value>
+  </data>
+  <data name="RichPresence.PrivateServer" xml:space="preserve">
+    <value>Dans un serveur privé</value>
+  </data>
+  <data name="RichPresence.ReservedServer" xml:space="preserve">
+    <value>Dans un serveur réservé</value>
+  </data>
+  <data name="RichPresence.PlayingOn" xml:space="preserve">
+    <value>Joue sur {0} (@{1})</value>
+  </data>
+  <data name="RichPresence.JoinServer" xml:space="preserve">
+    <value>Rejoindre le serveur</value>
+  </data>
+  <data name="RichPresence.GamePage" xml:space="preserve">
+    <value>Voir la page du jeu</value>
+  </data>
 </root>

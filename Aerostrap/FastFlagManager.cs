@@ -138,10 +138,13 @@ namespace Aerostrap
         {
             bool result = base.Load(alertFailure);
 
-            OriginalProp = new(Prop);
-
             if (GetPreset("Rendering.ManualFullscreen") != "False")
+            {
                 SetPreset("Rendering.ManualFullscreen", "False");
+                Save();
+            }
+
+            OriginalProp = new(Prop);
 
             return result;
         }

@@ -2,6 +2,7 @@
 
 using Windows.Win32;
 using Windows.Win32.Foundation;
+using Windows.Win32.UI.WindowsAndMessaging;
 
 using Aerostrap.UI.Elements.Dialogs;
 using Aerostrap.Enums;
@@ -218,6 +219,29 @@ namespace Aerostrap
                     Utilities.ShellExecute("https://support.microsoft.com/en-us/topic/media-feature-pack-list-for-windows-n-editions-c1c6fffa-d052-8338-7a79-a4bb980a700a");
 
                 App.Terminate(ErrorCode.ERROR_FILE_NOT_FOUND);
+            }
+
+            if (launchMode == LaunchMode.Player && String.IsNullOrEmpty(App.LaunchSettings.RobloxLaunchArgs))
+            {
+                var running = Utilities.GetProcessesSafe().FirstOrDefault(x => x.ProcessName == App.RobloxPlayerAppName);
+
+                if (running is not null)
+                {
+                    App.Logger.WriteLine(LOG_IDENT, $"Roblox is already running (PID {running.Id}), bringing it to the foreground");
+
+                    var handle = (HWND)running.MainWindowHandle;
+
+                    if (!handle.IsNull)
+                    {
+                        if (PInvoke.IsIconic(handle))
+                            PInvoke.ShowWindow(handle, SHOW_WINDOW_CMD.SW_RESTORE);
+
+                        PInvoke.SetForegroundWindow(handle);
+                    }
+
+                    App.Terminate();
+                    return;
+                }
             }
 
             if (App.Settings.Prop.ConfirmLaunches && launchMode != LaunchMode.Studio && Mutex.TryOpenExisting("ROBLOX_singletonMutex", out var _))

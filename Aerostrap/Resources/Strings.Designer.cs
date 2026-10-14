@@ -2410,5 +2410,41 @@
                 return ResourceManager.GetString("Menu.Integrations.RichPresenceTemplate.Description", resourceCulture);
             }
         }
+
+        public static string RichPresence_ByCreator {
+            get {
+                return ResourceManager.GetString("RichPresence.ByCreator", resourceCulture);
+            }
+        }
+
+        public static string RichPresence_PrivateServer {
+            get {
+                return ResourceManager.GetString("RichPresence.PrivateServer", resourceCulture);
+            }
+        }
+
+        public static string RichPresence_ReservedServer {
+            get {
+                return ResourceManager.GetString("RichPresence.ReservedServer", resourceCulture);
+            }
+        }
+
+        public static string RichPresence_PlayingOn {
+            get {
+                return ResourceManager.GetString("RichPresence.PlayingOn", resourceCulture);
+            }
+        }
+
+        public static string RichPresence_JoinServer {
+            get {
+                return ResourceManager.GetString("RichPresence.JoinServer", resourceCulture);
+            }
+        }
+
+        public static string RichPresence_GamePage {
+            get {
+                return ResourceManager.GetString("RichPresence.GamePage", resourceCulture);
+            }
+        }
     }
 }

@@ -41,6 +41,10 @@ namespace Aerostrap.UI.Elements.Controls
 
         private bool _measured;
 
+        private bool _running;
+
+        private Window? _window;
+
         public int FlakeCount { get; set; }
 
         public int RefreshRate { get; private set; } = 60;
@@ -52,6 +56,8 @@ namespace Aerostrap.UI.Elements.Controls
 
             Loaded += OnLoaded;
             Unloaded += OnUnloaded;
+            SizeChanged += OnSizeChanged;
+            IsVisibleChanged += (_, _) => UpdateRunning();
         }
 
         public static int GetRefreshRate(Window window)
@@ -69,20 +75,59 @@ namespace Aerostrap.UI.Elements.Controls
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            if (Window.GetWindow(this) is Window window)
-                RefreshRate = GetRefreshRate(window);
+            _window = Window.GetWindow(this);
+
+            if (_window is not null)
+            {
+                RefreshRate = GetRefreshRate(_window);
+                _window.StateChanged += OnWindowStateChanged;
+            }
 
             App.Logger.WriteLine(LOG_IDENT, $"Display refresh rate is {RefreshRate} Hz");
 
             CreateFlakes();
-
-            _lastRenderTime = TimeSpan.Zero;
-            CompositionTarget.Rendering += OnRendering;
+            UpdateRunning();
         }
 
         private void OnUnloaded(object sender, RoutedEventArgs e)
         {
-            CompositionTarget.Rendering -= OnRendering;
+            if (_window is not null)
+                _window.StateChanged -= OnWindowStateChanged;
+
+            SetRunning(false);
+        }
+
+        private void OnWindowStateChanged(object? sender, EventArgs e) => UpdateRunning();
+
+        private void UpdateRunning() => SetRunning(IsLoaded && IsVisible && _window?.WindowState != System.Windows.WindowState.Minimized);
+
+        private void SetRunning(bool running)
+        {
+            if (running == _running)
+                return;
+
+            _running = running;
+            _lastRenderTime = TimeSpan.Zero;
+
+            if (running)
+                CompositionTarget.Rendering += OnRendering;
+            else
+                CompositionTarget.Rendering -= OnRendering;
+        }
+
+        private void OnSizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (e.PreviousSize.Width <= 0 || e.PreviousSize.Height <= 0)
+                return;
+
+            double scaleX = e.NewSize.Width / e.PreviousSize.Width;
+            double scaleY = e.NewSize.Height / e.PreviousSize.Height;
+
+            foreach (var flake in _flakes)
+            {
+                flake.BaseX *= scaleX;
+                flake.Y *= scaleY;
+            }
         }
 
         private Brush CreateFlakeBrush()

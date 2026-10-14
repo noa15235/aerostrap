@@ -388,7 +388,7 @@ namespace Aerostrap.Integrations
                 var userDetails = await UserDetails.Fetch(activity.UserId);
 
                 smallImage = userDetails.Thumbnail.ImageUrl!;
-                smallImageText = $"Playing on {userDetails.Data.DisplayName} (@{userDetails.Data.Name})";
+                smallImageText = String.Format(Strings.RichPresence_PlayingOn, userDetails.Data.DisplayName, userDetails.Data.Name);
             }
 
             if (!_activityWatcher.InGame || placeId != activity.PlaceId)
@@ -399,9 +399,9 @@ namespace Aerostrap.Integrations
 
             string status = _activityWatcher.Data.ServerType switch
             {
-                ServerType.Private => "In a private server",
-                ServerType.Reserved => "In a reserved server",
-                _ => $"by {universeDetails.Data.Creator.Name}" + (universeDetails.Data.Creator.HasVerifiedBadge ? " ☑️" : ""),
+                ServerType.Private => Strings.RichPresence_PrivateServer,
+                ServerType.Reserved => Strings.RichPresence_ReservedServer,
+                _ => String.Format(Strings.RichPresence_ByCreator, universeDetails.Data.Creator.Name) + (universeDetails.Data.Creator.HasVerifiedBadge ? " ☑️" : ""),
             };
 
             string universeName = universeDetails.Data.Name;
@@ -459,7 +459,7 @@ namespace Aerostrap.Integrations
                 {
                     buttons.Add(new Button
                     {
-                        Label = "Join server",
+                        Label = Strings.RichPresence_JoinServer,
                         Url = data.GetInviteDeeplink()
                     });
                 }
@@ -467,7 +467,7 @@ namespace Aerostrap.Integrations
 
             buttons.Add(new Button
             {
-                Label = "See game page",
+                Label = Strings.RichPresence_GamePage,
                 Url = $"https://www.roblox.com/games/{data.PlaceId}"
             });
 
